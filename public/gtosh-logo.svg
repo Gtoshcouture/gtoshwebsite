@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Top-left arc piece -->
+  <path d="M 40 110 A 65 65 0 0 1 105 45" stroke="currentColor" stroke-width="16" stroke-linecap="square" fill="none"/>
+  <path d="M 55 110 A 50 50 0 0 1 105 60" stroke="currentColor" stroke-width="16" stroke-linecap="square" fill="none"/>
+  <!-- Bottom-right arc piece -->
+  <path d="M 95 155 A 65 65 0 0 0 160 90" stroke="currentColor" stroke-width="16" stroke-linecap="square" fill="none"/>
+  <path d="M 95 140 A 50 50 0 0 0 145 90" stroke="currentColor" stroke-width="16" stroke-linecap="square" fill="none"/>
+  <line x1="95" y1="155" x2="95" y2="140" stroke="currentColor" stroke-width="16"/>
+  <line x1="160" y1="90" x2="145" y2="90" stroke="currentColor" stroke-width="16"/>
+</svg>
