@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useAdminStore } from '@/lib/adminStore';
 
@@ -206,6 +206,7 @@ function MediaManager() {
   const [showAdd, setShowAdd] = useState(false);
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     if (url && name) {
@@ -214,11 +215,37 @@ function MediaManager() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          addMedia({
+            id: `m-${Date.now()}`,
+            url: reader.result,
+            name: file.name,
+            type: file.type.startsWith('video/') ? 'video' : 'image',
+            uploadedAt: new Date().toISOString().split('T')[0],
+            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[13px] text-white/50 uppercase tracking-wider">Media Manager</h2>
-        <button onClick={() => setShowAdd(!showAdd)} className="bg-white text-[#111] rounded-lg px-4 py-2 text-[13px] font-medium">+ Add Media</button>
+        <div className="flex gap-2">
+          <button onClick={() => fileRef.current?.click()} className="bg-white/10 text-white rounded-lg px-4 py-2 text-[13px] hover:bg-white/15 transition-colors">Upload File</button>
+          <button onClick={() => setShowAdd(!showAdd)} className="bg-white text-[#111] rounded-lg px-4 py-2 text-[13px] font-medium">+ Add by URL</button>
+          <input ref={fileRef} type="file" accept="image/*,video/*" multiple onChange={handleFileUpload} className="hidden" />
+        </div>
       </div>
 
       {showAdd && (
@@ -235,7 +262,12 @@ function MediaManager() {
         {media.map(m => (
           <div key={m.id} className="group relative bg-white/5 border border-white/5 rounded-xl overflow-hidden">
             <div className="relative aspect-square">
-              <Image src={m.url} alt={m.name} fill className="object-cover" />
+              {m.url.startsWith('data:') ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={m.url} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <Image src={m.url} alt={m.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
+              )}
               <button onClick={() => deleteMedia(m.id)} className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white/60 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
             </div>
             <div className="p-3">

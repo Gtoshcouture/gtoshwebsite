@@ -98,9 +98,11 @@ function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: 'bg-yellow-400',
     processing: 'bg-blue-400',
+    fulfilled: 'bg-purple-400',
     shipped: 'bg-green-400',
     delivered: 'bg-green-600',
     cancelled: 'bg-red-400',
+    refunded: 'bg-orange-400',
   };
   return <span className={`w-2 h-2 rounded-full ${colors[status] || 'bg-white/20'}`} />;
 }

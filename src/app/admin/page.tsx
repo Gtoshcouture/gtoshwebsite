@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/lib/adminStore';
 import Overview from './Overview';
 import GettingPaid from './GettingPaid';
@@ -27,6 +27,13 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
+
+  if (!hydrated) {
+    return <div className="min-h-screen bg-[#111]" />;
+  }
 
   if (!isLoggedIn) {
     return (

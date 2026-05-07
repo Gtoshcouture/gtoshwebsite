@@ -237,7 +237,7 @@ const defaultShipping: ShippingProfile[] = [
 
 const defaultMedia: MediaItem[] = [
   { id: 'm1', url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800', name: 'hero-collection.jpg', type: 'image', uploadedAt: '2026-04-10', size: '2.4 MB' },
-  { id: 'm2', url: 'https://images.unsplash.com/photo-1584917865442-de89be371e76?w=800', name: 'arc-tote-1.jpg', type: 'image', uploadedAt: '2026-04-12', size: '1.8 MB' },
+  { id: 'm2', url: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800', name: 'arc-tote-1.jpg', type: 'image', uploadedAt: '2026-04-12', size: '1.8 MB' },
   { id: 'm3', url: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800', name: 'clothing-category.jpg', type: 'image', uploadedAt: '2026-04-12', size: '2.1 MB' },
 ];
 

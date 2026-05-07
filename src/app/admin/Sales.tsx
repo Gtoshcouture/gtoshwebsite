@@ -150,7 +150,7 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
                 <div>
                   <p className="text-[12px] text-white/40 mb-1">Carrier</p>
                   <select value={carrier} onChange={e => setCarrier(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-[13px] text-white focus:outline-none appearance-none">
-                    {['UPS', 'FedEx', 'USPS', 'DHL'].map(c => <option key={c} value={c}>{c}</option>)}
+                    {['UPS', 'FedEx', 'USPS', 'DHL'].map(c => <option key={c} value={c} className="bg-[#1a1a1a] text-white">{c}</option>)}
                   </select>
                 </div>
                 <div>

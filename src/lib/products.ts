@@ -89,7 +89,7 @@ export const products: Product[] = [
     category: 'bags',
     price: 485,
     images: [
-      'https://images.unsplash.com/photo-1584917865442-de89be371e76?w=800&q=85',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=85',
       'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=85',
     ],
     description: 'The Arc is a study in geometry. A rigid base softens into curved handles — structured enough to stand, elegant enough to carry anywhere.',
@@ -115,7 +115,7 @@ export const products: Product[] = [
     price: 320,
     images: [
       'https://images.unsplash.com/photo-1591561954557-26941169b49e?w=800&q=85',
-      'https://images.unsplash.com/photo-1594938298603-c8148c4b4157?w=800&q=85',
+      'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=800&q=85',
     ],
     description: 'Inspired by origami and fabric folds. The Fold carries everything you need without the noise.',
     details: [
@@ -211,7 +211,7 @@ export const products: Product[] = [
     category: 'clothing',
     price: 445,
     images: [
-      'https://images.unsplash.com/photo-1594938298603-c8148c4b4157?w=800&q=85',
+      'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=800&q=85',
       'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=800&q=85',
     ],
     description: 'Architecture for the body. The Column blazer is minimal, structural, and completely essential.',

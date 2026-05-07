@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useAdminStore } from '@/lib/adminStore';
 import { Product } from '@/lib/products';
@@ -54,7 +54,12 @@ export default function Products() {
             ) : (
               <div className="bg-white/5 border border-white/5 rounded-xl px-5 py-4 flex items-center gap-4">
                 <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
-                  <Image src={p.images[0]} alt="" fill className="object-cover" />
+                  {p.images[0]?.startsWith('data:') ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={p.images[0]} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <Image src={p.images[0]} alt="" fill sizes="48px" className="object-cover" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-white truncate">{p.name}</p>
@@ -143,19 +148,7 @@ function ProductEditor({ product, onSave, onCancel }: { product: Product; onSave
           <Field label="Sizes (comma-separated)" value={data.sizes} onChange={(v) => setData({ ...data, sizes: v })} />
         </div>
         <div className="md:col-span-2">
-          <p className="text-[12px] text-white/40 mb-2">Images (URLs)</p>
-          {data.images.map((img, i) => (
-            <div key={i} className="flex gap-2 mb-2">
-              <input
-                value={img}
-                onChange={(e) => { const imgs = [...data.images]; imgs[i] = e.target.value; setData({ ...data, images: imgs }); }}
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none"
-                placeholder="Image URL"
-              />
-              <button onClick={() => setData({ ...data, images: data.images.filter((_, j) => j !== i) })} className="text-red-400/60 text-sm px-2">×</button>
-            </div>
-          ))}
-          <button onClick={() => setData({ ...data, images: [...data.images, ''] })} className="text-[12px] text-white/40 hover:text-white/60">+ Add image</button>
+          <ImageUpload images={data.images} onChange={(imgs) => setData({ ...data, images: imgs })} />
         </div>
         <div className="md:col-span-2 flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-[13px] text-white/60">
@@ -183,7 +176,7 @@ function ProductEditor({ product, onSave, onCancel }: { product: Product; onSave
 function AddProductModal({ onSave, onClose }: { onSave: (p: Product) => void; onClose: () => void }) {
   const [data, setData] = useState({
     name: '', category: 'clothing' as 'clothing' | 'bags', price: 0, quantity: 10,
-    description: '', image: '', colors: '', sizes: '',
+    description: '', images: [] as string[], colors: '', sizes: '',
   });
 
   const handleSave = () => {
@@ -194,7 +187,7 @@ function AddProductModal({ onSave, onClose }: { onSave: (p: Product) => void; on
       name: data.name,
       category: data.category,
       price: data.price,
-      images: data.image ? [data.image] : ['https://images.unsplash.com/photo-1584917865442-de89be371e76?w=800&q=85'],
+      images: data.images.length > 0 ? data.images : ['https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=85'],
       description: data.description,
       details: [],
       colors: data.colors ? data.colors.split(',').map(c => c.trim()) : ['Cream'],
@@ -219,15 +212,15 @@ function AddProductModal({ onSave, onClose }: { onSave: (p: Product) => void; on
                 onChange={e => setData({ ...data, category: e.target.value as 'clothing' | 'bags' })}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-[13px] text-white focus:outline-none appearance-none"
               >
-                <option value="clothing">Clothing</option>
-                <option value="bags">Bags</option>
+                <option value="clothing" className="bg-[#1a1a1a] text-white">Clothing</option>
+                <option value="bags" className="bg-[#1a1a1a] text-white">Bags</option>
               </select>
             </div>
             <Field label="Price ($)" type="number" value={data.price} onChange={v => setData({ ...data, price: +v })} />
           </div>
           <Field label="Stock Quantity" type="number" value={data.quantity} onChange={v => setData({ ...data, quantity: +v })} />
           <Field label="Description" value={data.description} onChange={v => setData({ ...data, description: v })} textarea />
-          <Field label="Image URL" value={data.image} onChange={v => setData({ ...data, image: v })} />
+          <ImageUpload images={data.images} onChange={(imgs) => setData({ ...data, images: imgs })} />
           <Field label="Colors (comma-separated)" value={data.colors} onChange={v => setData({ ...data, colors: v })} />
           <Field label="Sizes (comma-separated)" value={data.sizes} onChange={v => setData({ ...data, sizes: v })} />
         </div>
@@ -236,6 +229,68 @@ function AddProductModal({ onSave, onClose }: { onSave: (p: Product) => void; on
           <button onClick={onClose} className="rounded-lg px-6 py-2.5 text-[13px] text-white/40 bg-white/5">Cancel</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ImageUpload({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          onChange([...images, reader.result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    if (fileRef.current) fileRef.current.value = '';
+  }, [images, onChange]);
+
+  return (
+    <div>
+      <p className="text-[12px] text-white/40 mb-2">Images</p>
+      {images.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-3">
+          {images.map((img, i) => (
+            <div key={i} className="relative group">
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </div>
+              <button onClick={() => onChange(images.filter((_, j) => j !== i))}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button onClick={() => fileRef.current?.click()} type="button"
+          className="bg-white/10 text-white/70 rounded-lg px-4 py-2 text-[12px] hover:bg-white/15 transition-colors">
+          Upload Image
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+      </div>
+      {images.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1">
+          {images.map((img, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <input
+                value={img.startsWith('data:') ? `Uploaded image ${i + 1}` : img}
+                onChange={(e) => { if (!img.startsWith('data:')) { const imgs = [...images]; imgs[i] = e.target.value; onChange(imgs); } }}
+                readOnly={img.startsWith('data:')}
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-white/50 focus:outline-none"
+                placeholder="Image URL"
+              />
+              <button onClick={() => onChange(images.filter((_, j) => j !== i))} className="text-red-400/60 text-sm px-1">×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
