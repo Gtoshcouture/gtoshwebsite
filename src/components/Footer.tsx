@@ -35,7 +35,10 @@ export default function Footer() {
       </div>
       <div className="border-t border-[#3E2A1E]/10 px-6 md:px-14 py-5 flex items-center justify-between">
         <span className="font-['Playfair_Display',serif] italic text-lg text-[#9B7B68]">gtosh.</span>
-        <p className="text-[12px] text-[#9B7B68]/60">© {new Date().getFullYear()}</p>
+        <div className="flex items-center gap-4">
+          <Link href="/admin" className="text-[12px] text-[#9B7B68]/30 hover:text-[#9B7B68]/60 transition-colors">Admin</Link>
+          <p className="text-[12px] text-[#9B7B68]/60">© {new Date().getFullYear()}</p>
+        </div>
       </div>
     </footer>
   );
