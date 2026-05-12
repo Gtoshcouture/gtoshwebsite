@@ -1,3 +1,8 @@
+export type VariantPrice = {
+  variant: string; // e.g. "Black", "S", "Black / S"
+  price: number;
+};
+
 export type Product = {
   id: string;
   slug: string;
@@ -5,6 +10,7 @@ export type Product = {
   category: 'clothing' | 'bags';
   price: number;
   originalPrice?: number;
+  variantPrices?: VariantPrice[];
   images: string[];
   description: string;
   details: string[];

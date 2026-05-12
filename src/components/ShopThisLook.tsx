@@ -2,9 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { looks, products } from '@/lib/products';
+import { looks } from '@/lib/products';
+import { useAdminStore } from '@/lib/adminStore';
 
 export default function ShopThisLook() {
+  const { products } = useAdminStore();
   const look = looks[0];
   const lookProducts = look.products.map((id) => products.find((p) => p.id === id)).filter(Boolean);
 
@@ -24,7 +26,12 @@ export default function ShopThisLook() {
               {lookProducts.map((product) => product && (
                 <Link key={product.id} href={`/product/${product.slug}`} className="group flex gap-5 items-center py-3 border-b border-[#6B4C3B]/8">
                   <div className="relative w-16 h-20 bg-[#EFEBE4] flex-shrink-0 overflow-hidden">
-                    <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                    {product.images[0].startsWith('data:') ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={product.images[0]} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-[#3E2A1E] group-hover:text-[#6B4C3B] transition-colors">{product.name}</p>

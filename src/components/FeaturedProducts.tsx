@@ -1,9 +1,10 @@
 'use client';
 
-import { products } from '@/lib/products';
+import { useAdminStore } from '@/lib/adminStore';
 import ProductCard from './ProductCard';
 
 export default function FeaturedProducts() {
+  const { products } = useAdminStore();
   const featured = products.filter((p) => p.isBestSeller || p.isNew).slice(0, 4);
 
   return (

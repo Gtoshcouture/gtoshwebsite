@@ -1,5 +1,4 @@
-import { products } from '@/lib/products';
-import ProductCard from '@/components/ProductCard';
+import { AllProductsGrid } from '@/components/ShopProductGrid';
 import Link from 'next/link';
 
 export const metadata = { title: 'Shop — GTOSH' };
@@ -14,9 +13,7 @@ export default function ShopPage() {
           <Link href="/shop/clothing" className="text-[13px] text-[#9B7B68] hover:text-[#3E2A1E] transition-colors">Clothing</Link>
           <Link href="/shop/bags" className="text-[13px] text-[#9B7B68] hover:text-[#3E2A1E] transition-colors">Bags</Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10 mb-20">
-          {products.map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
+        <AllProductsGrid />
       </div>
     </div>
   );

@@ -5,6 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Product } from '@/lib/products';
 
+function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  if (src.startsWith('data:')) {
+    /* eslint-disable-next-line @next/next/no-img-element */
+    return <img src={src} alt={alt} className={`absolute inset-0 w-full h-full object-cover ${className || ''}`} />;
+  }
+  return <Image src={src} alt={alt} fill sizes="(max-width: 768px) 50vw, 25vw" className={`object-cover ${className || ''}`} />;
+}
+
 export default function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false);
 
@@ -16,18 +24,16 @@ export default function ProductCard({ product }: { product: Product }) {
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <Image
+          <ProductImage
             src={product.images[0]}
             alt={product.name}
-            fill
-            className={`object-cover transition-all duration-700 ${hovered && product.images[1] ? 'opacity-0' : 'opacity-100'}`}
+            className={`transition-all duration-700 ${hovered && product.images[1] ? 'opacity-0' : 'opacity-100'}`}
           />
           {product.images[1] && (
-            <Image
+            <ProductImage
               src={product.images[1]}
               alt={`${product.name} alternate`}
-              fill
-              className={`object-cover transition-all duration-700 ${hovered ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-all duration-700 ${hovered ? 'opacity-100' : 'opacity-0'}`}
             />
           )}
         </div>

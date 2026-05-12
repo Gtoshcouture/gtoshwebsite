@@ -5,6 +5,14 @@ import Image from 'next/image';
 import { Product } from '@/lib/products';
 import { useCartStore } from '@/lib/store';
 
+function DetailImage({ src, alt, className, fill, priority, sizes }: { src: string; alt: string; className?: string; fill?: boolean; priority?: boolean; sizes?: string }) {
+  if (src.startsWith('data:')) {
+    /* eslint-disable-next-line @next/next/no-img-element */
+    return <img src={src} alt={alt} className={`${fill ? 'absolute inset-0 w-full h-full' : ''} ${className || ''}`} />;
+  }
+  return <Image src={src} alt={alt} fill={fill} priority={priority} sizes={sizes} className={className} />;
+}
+
 export default function ProductDetail({ product }: { product: Product }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(product.sizes?.[0]);
@@ -34,7 +42,7 @@ export default function ProductDetail({ product }: { product: Product }) {
         {/* Images */}
         <div>
           <div className="relative aspect-[3/4] overflow-hidden bg-[#EFEBE4] mb-3">
-            <Image src={product.images[selectedImage]} alt={product.name} fill priority className="object-cover" />
+            <DetailImage src={product.images[selectedImage]} alt={product.name} fill priority className="object-cover" />
           </div>
           {product.images.length > 1 && (
             <div className="flex gap-2">
@@ -44,7 +52,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                   onClick={() => setSelectedImage(i)}
                   className={`relative w-16 h-20 overflow-hidden bg-[#EFEBE4] transition-opacity ${i === selectedImage ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                 >
-                  <Image src={img} alt="" fill className="object-cover" />
+                  <DetailImage src={img} alt="" fill className="object-cover" />
                 </button>
               ))}
             </div>
