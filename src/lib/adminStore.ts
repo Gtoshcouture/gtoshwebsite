@@ -467,6 +467,13 @@ export const useAdminStore = create<AdminStore>()(
         upsertConfig('settings', updated);
       },
     }),
-    { name: 'gtosh-admin' }
+    {
+      name: 'gtosh-admin',
+      partialize: (state) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { dbLoaded, ...rest } = state;
+        return rest;
+      },
+    }
   )
 );
