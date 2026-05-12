@@ -23,13 +23,20 @@ const navItems: { key: Tab; label: string }[] = [
 ];
 
 export default function AdminPage() {
-  const { isLoggedIn, login, logout } = useAdminStore();
+  const { isLoggedIn, login, logout, dbLoaded, loadFromDB } = useAdminStore();
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => { setHydrated(true); }, []);
+
+  // Load data from Supabase on mount
+  useEffect(() => {
+    if (hydrated && isLoggedIn) {
+      loadFromDB();
+    }
+  }, [hydrated, isLoggedIn, loadFromDB]);
 
   if (!hydrated) {
     return <div className="min-h-screen bg-[#111]" />;

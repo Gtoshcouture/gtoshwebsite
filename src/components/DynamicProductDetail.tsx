@@ -1,11 +1,16 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAdminStore } from '@/lib/adminStore';
 import ProductDetail from './ProductDetail';
 import ProductCard from './ProductCard';
 
 export default function DynamicProductDetail({ slug }: { slug: string }) {
-  const { products } = useAdminStore();
+  const { products, dbLoaded, loadFromDB } = useAdminStore();
+
+  useEffect(() => {
+    if (!dbLoaded) loadFromDB();
+  }, [dbLoaded, loadFromDB]);
   const product = products.find((p) => p.slug === slug);
 
   if (!product) {

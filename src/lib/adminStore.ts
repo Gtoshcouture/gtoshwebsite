@@ -3,6 +3,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { products as defaultProducts, Product, reviews as defaultReviews } from './products';
+import {
+  fetchProducts, upsertProduct, upsertAllProducts, deleteProductFromDB,
+  fetchOrders, upsertOrder, upsertAllOrders,
+  fetchConfig, upsertConfig, seedIfEmpty,
+} from './supabaseSync';
 
 // --- Types ---
 
@@ -118,6 +123,7 @@ export type StoreSettings = {
 
 type AdminStore = {
   isLoggedIn: boolean;
+  dbLoaded: boolean;
   products: Product[];
   orders: Order[];
   paymentLinks: PaymentLink[];
@@ -130,6 +136,7 @@ type AdminStore = {
 
   login: (password: string) => boolean;
   logout: () => void;
+  loadFromDB: () => Promise<void>;
 
   // Products
   addProduct: (p: Product) => void;
@@ -241,10 +248,20 @@ const defaultMedia: MediaItem[] = [
   { id: 'm3', url: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800', name: 'clothing-category.jpg', type: 'image', uploadedAt: '2026-04-12', size: '2.1 MB' },
 ];
 
+const defaultSettings: StoreSettings = {
+  storeName: 'GTOSH',
+  email: 'hello@gtosh.com',
+  currency: 'USD',
+  payments: { stripeEnabled: true, stripeKey: '', applePayEnabled: false, paypalEnabled: false, paypalEmail: '', afterpayEnabled: false },
+  tax: { enabled: true, rate: 8, includedInPrice: false, taxableCategories: ['clothing', 'bags'] },
+  socialLinks: { instagram: 'https://instagram.com/gtoshcouture', tiktok: 'https://tiktok.com/@gtosh' },
+};
+
 export const useAdminStore = create<AdminStore>()(
   persist(
     (set, get) => ({
       isLoggedIn: false,
+      dbLoaded: false,
       products: defaultProducts,
       orders: sampleOrders,
       paymentLinks: [],
@@ -256,30 +273,99 @@ export const useAdminStore = create<AdminStore>()(
       reviews: sampleReviews,
       shippingProfiles: defaultShipping,
       media: defaultMedia,
-      settings: {
-        storeName: 'GTOSH',
-        email: 'hello@gtosh.com',
-        currency: 'USD',
-        payments: { stripeEnabled: true, stripeKey: '', applePayEnabled: false, paypalEnabled: false, paypalEmail: '', afterpayEnabled: false },
-        tax: { enabled: true, rate: 8, includedInPrice: false, taxableCategories: ['clothing', 'bags'] },
-        socialLinks: { instagram: 'https://instagram.com/gtoshcouture', tiktok: 'https://tiktok.com/@gtosh' },
-      },
+      settings: defaultSettings,
 
       login: (pw) => { if (pw === ADMIN_PASSWORD) { set({ isLoggedIn: true }); return true; } return false; },
       logout: () => set({ isLoggedIn: false }),
 
-      addProduct: (p) => set({ products: [...get().products, p] }),
-      updateProduct: (id, u) => set({ products: get().products.map(p => p.id === id ? { ...p, ...u } : p) }),
-      deleteProduct: (id) => set({ products: get().products.filter(p => p.id !== id) }),
-      duplicateProduct: (id) => {
-        const o = get().products.find(p => p.id === id);
-        if (o) set({ products: [...get().products, { ...o, id: `p${Date.now()}`, slug: `${o.slug}-copy`, name: `${o.name} (Copy)` }] });
+      // Load all data from Supabase
+      loadFromDB: async () => {
+        try {
+          // Check if DB has data, seed if empty
+          const seeded = await seedIfEmpty({
+            products: get().products,
+            orders: get().orders,
+            settings: get().settings,
+            shippingProfiles: get().shippingProfiles,
+            subscribers: get().subscribers,
+            reviews: get().reviews,
+            media: get().media,
+            paymentLinks: get().paymentLinks,
+            payouts: get().payouts,
+          });
+
+          if (!seeded) {
+            // Load from DB
+            const [dbProducts, dbOrders, dbSettings, dbShipping, dbSubscribers, dbReviews, dbMedia, dbPaymentLinks, dbPayouts] = await Promise.all([
+              fetchProducts(),
+              fetchOrders(),
+              fetchConfig('settings'),
+              fetchConfig('shippingProfiles'),
+              fetchConfig('subscribers'),
+              fetchConfig('reviews'),
+              fetchConfig('media'),
+              fetchConfig('paymentLinks'),
+              fetchConfig('payouts'),
+            ]);
+
+            set({
+              products: dbProducts.length > 0 ? dbProducts : get().products,
+              orders: (dbOrders.length > 0 ? dbOrders : get().orders) as Order[],
+              settings: (dbSettings || get().settings) as StoreSettings,
+              shippingProfiles: (dbShipping || get().shippingProfiles) as ShippingProfile[],
+              subscribers: (dbSubscribers || get().subscribers) as Subscriber[],
+              reviews: (dbReviews || get().reviews) as ReviewItem[],
+              media: (dbMedia || get().media) as MediaItem[],
+              paymentLinks: (dbPaymentLinks || get().paymentLinks) as PaymentLink[],
+              payouts: (dbPayouts || get().payouts) as Payout[],
+            });
+          }
+
+          set({ dbLoaded: true });
+          console.log('Admin data loaded from Supabase');
+        } catch (err) {
+          console.error('Failed to load from Supabase:', err);
+          set({ dbLoaded: true }); // Still mark loaded so app works with local data
+        }
       },
 
-      updateOrder: (id, u) => set({ orders: get().orders.map(o => o.id === id ? { ...o, ...u } : o) }),
-      addOrderHistory: (id, action) => set({
-        orders: get().orders.map(o => o.id === id ? { ...o, history: [...o.history, { date: new Date().toISOString(), action }] } : o),
-      }),
+      // Products — sync to DB on every mutation
+      addProduct: (p) => {
+        set({ products: [...get().products, p] });
+        upsertProduct(p);
+      },
+      updateProduct: (id, u) => {
+        const updated = get().products.map(p => p.id === id ? { ...p, ...u } : p);
+        set({ products: updated });
+        const product = updated.find(p => p.id === id);
+        if (product) upsertProduct(product);
+      },
+      deleteProduct: (id) => {
+        set({ products: get().products.filter(p => p.id !== id) });
+        deleteProductFromDB(id);
+      },
+      duplicateProduct: (id) => {
+        const o = get().products.find(p => p.id === id);
+        if (o) {
+          const dup = { ...o, id: `p${Date.now()}`, slug: `${o.slug}-copy`, name: `${o.name} (Copy)` };
+          set({ products: [...get().products, dup] });
+          upsertProduct(dup);
+        }
+      },
+
+      // Orders — sync to DB
+      updateOrder: (id, u) => {
+        const updated = get().orders.map(o => o.id === id ? { ...o, ...u } : o);
+        set({ orders: updated });
+        const order = updated.find(o => o.id === id);
+        if (order) upsertOrder(order);
+      },
+      addOrderHistory: (id, action) => {
+        const updated = get().orders.map(o => o.id === id ? { ...o, history: [...o.history, { date: new Date().toISOString(), action }] } : o);
+        set({ orders: updated });
+        const order = updated.find(o => o.id === id);
+        if (order) upsertOrder(order);
+      },
       fulfillOrder: (id) => { get().updateOrder(id, { status: 'fulfilled' }); get().addOrderHistory(id, 'Marked as fulfilled'); },
       shipOrder: (id, tracking, carrier) => {
         const urls: Record<string, string> = { UPS: `https://ups.com/track?tracknum=${tracking}`, FedEx: `https://fedex.com/fedextrack/?trknbr=${tracking}`, USPS: `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}` };
@@ -289,29 +375,97 @@ export const useAdminStore = create<AdminStore>()(
       cancelOrder: (id) => { get().updateOrder(id, { status: 'cancelled' }); get().addOrderHistory(id, 'Order cancelled'); },
       refundOrder: (id) => { get().updateOrder(id, { status: 'refunded', paymentStatus: 'refunded' }); get().addOrderHistory(id, 'Full refund issued'); },
 
-      addPaymentLink: (p) => set({ paymentLinks: [p, ...get().paymentLinks] }),
-      deletePaymentLink: (id) => set({ paymentLinks: get().paymentLinks.filter(p => p.id !== id) }),
+      // Payment links — sync to DB
+      addPaymentLink: (p) => {
+        const updated = [p, ...get().paymentLinks];
+        set({ paymentLinks: updated });
+        upsertConfig('paymentLinks', updated);
+      },
+      deletePaymentLink: (id) => {
+        const updated = get().paymentLinks.filter(p => p.id !== id);
+        set({ paymentLinks: updated });
+        upsertConfig('paymentLinks', updated);
+      },
 
-      addSubscriber: (s) => set({ subscribers: [...get().subscribers, s] }),
-      deleteSubscriber: (id) => set({ subscribers: get().subscribers.filter(s => s.id !== id) }),
-      tagSubscriber: (id, tag) => set({
-        subscribers: get().subscribers.map(s => s.id === id ? { ...s, tags: s.tags.includes(tag) ? s.tags.filter(t => t !== tag) : [...s.tags, tag] } : s),
-      }),
+      // Subscribers — sync to DB
+      addSubscriber: (s) => {
+        const updated = [...get().subscribers, s];
+        set({ subscribers: updated });
+        upsertConfig('subscribers', updated);
+      },
+      deleteSubscriber: (id) => {
+        const updated = get().subscribers.filter(s => s.id !== id);
+        set({ subscribers: updated });
+        upsertConfig('subscribers', updated);
+      },
+      tagSubscriber: (id, tag) => {
+        const updated = get().subscribers.map(s => s.id === id ? { ...s, tags: s.tags.includes(tag) ? s.tags.filter(t => t !== tag) : [...s.tags, tag] } : s);
+        set({ subscribers: updated });
+        upsertConfig('subscribers', updated);
+      },
 
-      addReview: (r) => set({ reviews: [r, ...get().reviews] }),
-      toggleReviewPublished: (id) => set({ reviews: get().reviews.map(r => r.id === id ? { ...r, published: !r.published } : r) }),
-      deleteReview: (id) => set({ reviews: get().reviews.filter(r => r.id !== id) }),
+      // Reviews — sync to DB
+      addReview: (r) => {
+        const updated = [r, ...get().reviews];
+        set({ reviews: updated });
+        upsertConfig('reviews', updated);
+      },
+      toggleReviewPublished: (id) => {
+        const updated = get().reviews.map(r => r.id === id ? { ...r, published: !r.published } : r);
+        set({ reviews: updated });
+        upsertConfig('reviews', updated);
+      },
+      deleteReview: (id) => {
+        const updated = get().reviews.filter(r => r.id !== id);
+        set({ reviews: updated });
+        upsertConfig('reviews', updated);
+      },
 
-      addShippingProfile: (s) => set({ shippingProfiles: [...get().shippingProfiles, s] }),
-      updateShippingProfile: (id, u) => set({ shippingProfiles: get().shippingProfiles.map(s => s.id === id ? { ...s, ...u } : s) }),
-      deleteShippingProfile: (id) => set({ shippingProfiles: get().shippingProfiles.filter(s => s.id !== id) }),
+      // Shipping — sync to DB
+      addShippingProfile: (s) => {
+        const updated = [...get().shippingProfiles, s];
+        set({ shippingProfiles: updated });
+        upsertConfig('shippingProfiles', updated);
+      },
+      updateShippingProfile: (id, u) => {
+        const updated = get().shippingProfiles.map(s => s.id === id ? { ...s, ...u } : s);
+        set({ shippingProfiles: updated });
+        upsertConfig('shippingProfiles', updated);
+      },
+      deleteShippingProfile: (id) => {
+        const updated = get().shippingProfiles.filter(s => s.id !== id);
+        set({ shippingProfiles: updated });
+        upsertConfig('shippingProfiles', updated);
+      },
 
-      addMedia: (m) => set({ media: [m, ...get().media] }),
-      deleteMedia: (id) => set({ media: get().media.filter(m => m.id !== id) }),
+      // Media — sync to DB
+      addMedia: (m) => {
+        const updated = [m, ...get().media];
+        set({ media: updated });
+        upsertConfig('media', updated);
+      },
+      deleteMedia: (id) => {
+        const updated = get().media.filter(m => m.id !== id);
+        set({ media: updated });
+        upsertConfig('media', updated);
+      },
 
-      updateSettings: (u) => set({ settings: { ...get().settings, ...u } }),
-      updatePaymentSettings: (u) => set({ settings: { ...get().settings, payments: { ...get().settings.payments, ...u } } }),
-      updateTaxSettings: (u) => set({ settings: { ...get().settings, tax: { ...get().settings.tax, ...u } } }),
+      // Settings — sync to DB
+      updateSettings: (u) => {
+        const updated = { ...get().settings, ...u };
+        set({ settings: updated });
+        upsertConfig('settings', updated);
+      },
+      updatePaymentSettings: (u) => {
+        const updated = { ...get().settings, payments: { ...get().settings.payments, ...u } };
+        set({ settings: updated });
+        upsertConfig('settings', updated);
+      },
+      updateTaxSettings: (u) => {
+        const updated = { ...get().settings, tax: { ...get().settings.tax, ...u } };
+        set({ settings: updated });
+        upsertConfig('settings', updated);
+      },
     }),
     { name: 'gtosh-admin' }
   )
