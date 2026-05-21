@@ -198,7 +198,7 @@ export const products: Product[] = [
     ],
     description: 'The trouser that does everything. Wide leg, high rise, tailored — without trying too hard.',
     details: [
-      'Japanese wool-blend fabric',
+      'Danish wool-blend fabric',
       'High-waist with invisible zip',
       'Wide leg silhouette',
       'Dry clean recommended',
